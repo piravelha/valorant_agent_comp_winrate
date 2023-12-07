@@ -1,82 +1,8 @@
-import csv
+# Import necessary libraries
 import torch
-import torch.nn as neural_network_module
-import torch.optim as optimizer_module
-import random
 
-# Define the path to your CSV file
-file_path = "1.csv"
-
-# Function to read data from CSV file
-def read_data(file_path):
-    with open(file_path, newline="") as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader) # Skip the column headers
-
-        data = []
-
-        for row in reader:
-            features = [float(x) for x in row[:-1]]
-            target = float(row[-1])
-            data.append((features, target))
-
-    return data
-
-# Load data
-data = read_data(file_path)
-print(data)
-
-features = torch.tensor([d[0] for d in data])
-targets = torch.tensor([d[1] for d in data])
-
-# Create the network model
-class Net(neural_network_module.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.fc1 = neural_network_module.Linear(len(data[0][0]), 128)
-        self.fc2 = neural_network_module.Linear(128, 64)
-        self.fc3 = neural_network_module.Linear(64, 1)
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-    
-    # Create an instance of the network
-model = Net()
-
-# Define optimizer and loss function
-optimizer = optimizer_module.Adam(model.parameters())
-criterion = neural_network_module.MSELoss()
-
-num_epochs = 1000
-
-# Training loop
-for epoch in range(num_epochs):
-    epoch += 1
-
-    # Shuffle data
-    shuffled_data = list(zip(features, targets))
-    random.shuffle(shuffled_data)
-    features, targets = zip(*shuffled_data)
-
-    # Loop through each data point
-    for x, y in zip(features, targets):
-        # Forward pass
-        prediction = model(x.view(1, -1))
-
-        # Calculate loss
-        loss = criterion(prediction, y.view(1, -1))
-
-        # Backward pass and update weights
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    # Print loss every epoch
-    if epoch % 25 == 0:
-        print(f"Epoch: {epoch}/{num_epochs}, Loss: {loss.item()}")
+# Load the model
+model = torch.load("model.pth")
 
 agents = [
     'Brimstone',
@@ -142,24 +68,56 @@ ranks = [
     'Immortal 3',
     'Radiant',
 ]
-match_results = [
-    'Loss',
-    'Win',
-    'Draw',
-]
 
-# Predict on a new data point
-def predict(inputs):
-    inputs[0] = ranks.index(inputs[0])
-    inputs[1] = maps.index(inputs[1])
-    inputs[2:7] = [agents.index(agent) for agent in inputs[2:7]]
+def preprocess_data(data):
+    # Preprocess the data (replace this with your specific preprocessing steps)
+    processed_data = ranks.index(processed_data[0])
+    processed_data[1] = maps.index(processed_data[1])
+    processed_data[2:7] = [agents.index(agent) for agent in processed_data[2:7]]
 
-    inputs = torch.tensor(inputs, dtype = torch.float32)
+    inputs = torch.tensor(processed_data, dtype = torch.float32)
 
-    prediction = model(inputs)
+    return processed_data
+
+# Define your prediction function
+def make_prediction(data):
+    # Preprocess the data (replace this with your specific preprocessing steps)
+    processed_data = preprocess_data(data)
+
+    # Feed the data to the model
+    output = model(processed_data)
+
+    # Post-process the output (replace this with your specific post-processing steps)
+    prediction = model(data)
     prediction = prediction.item()
     prediction = 0 if prediction < 0 else prediction
 
     winrate = str(round(prediction * 100)) + '%'
 
     print(f"Calculated Winrate: {winrate}")
+
+    return winrate
+
+# Example usage
+#data = ...  # your input data
+#prediction = predict(data)
+
+#print(f"Prediction: {prediction}")
+
+import gradio as gr
+
+# Create Gradio interface with relevant inputs
+interface = gr.Interface(
+    fn=make_prediction,
+    inputs=[
+        # Input for rank
+        gr.Dropdown(label="Rank", choices=ranks, default=ranks[0]),
+        # Input for map
+        gr.Dropdown(label="Map", choices=maps, default=maps[0]),
+        # Input for agents
+        gr.MultiSelect(label="Agent Picks (1-5)", choices=agents, default=[agents[0]]),
+    ],
+    outputs="text",
+)
+
+interface.launch()
